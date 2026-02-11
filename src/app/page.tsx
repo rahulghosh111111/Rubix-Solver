@@ -1,65 +1,126 @@
-import Image from "next/image";
+"use client";
+import { useState } from 'react';
+import Scanner from '@/components/Scanner';
+import CubeMap from '@/components/CubeMap';
+
+// Face scanning order mapping to internal notation
+const FACE_ORDER = ["F", "R", "B", "L", "U", "D"];
+const FACE_NAMES = ["Front", "Right", "Back", "Left", "Up", "Down"];
 
 export default function Home() {
+  const [currentStep, setCurrentStep] = useState(0); 
+  const [cubeData, setCubeData] = useState<Record<string, string[]>>({});
+  const [solution, setSolution] = useState<string[]>([]);
+  const [isSolving, setIsSolving] = useState(false);
+
+  const handleCapture = (colors: string[]) => {
+    const faceKey = FACE_ORDER[currentStep];
+    const newCubeData = { ...cubeData, [faceKey]: colors };
+    setCubeData(newCubeData);
+
+    if (currentStep < 5) {
+      setCurrentStep(prev => prev + 1);
+    } else {
+      // All faces scanned, trigger solver
+      submitToSolver(newCubeData);
+    }
+  };
+
+  const submitToSolver = async (data: Record<string, string[]>) => {
+    setIsSolving(true);
+    try {
+      // Construct the 54-character string in U R F D L B order (Kociemba standard)
+      const stateString = [
+        ...(data['U'] || []),
+        ...(data['R'] || []),
+        ...(data['F'] || []),
+        ...(data['D'] || []),
+        ...(data['L'] || []),
+        ...(data['B'] || [])
+      ].join("");
+
+      const res = await fetch('/api/solve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cubeState: stateString }),
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        setSolution(result.moves);
+        setCurrentStep(6); // Move to "Solved" view
+      } else {
+        alert("Error: " + result.error);
+        setCurrentStep(0); // Reset to try again
+        setCubeData({});
+      }
+    } catch (error) {
+      alert("Failed to connect to solver API");
+    } finally {
+      setIsSolving(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen bg-[#050505] text-white flex flex-col items-center px-4 pb-10">
+      <header className="py-6 text-center">
+        <h1 className="text-2xl font-black tracking-tighter uppercase italic text-blue-500">Rubix.AI</h1>
+        <p className="text-xs text-gray-500 uppercase tracking-widest">Mobile AI Solver</p>
+      </header>
+
+      <div className="w-full max-w-md space-y-8">
+        {/* Progress Bar */}
+        <div className="flex justify-between px-2">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className={`h-1.5 w-full mx-1 rounded-full transition-colors duration-500 ${i <= currentStep ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'bg-gray-800'}`} />
+          ))}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+
+        {currentStep < 6 ? (
+          <>
+            <div className="text-center animate-pulse">
+              <h2 className="text-xl font-bold">Scan the <span className="text-blue-400">{FACE_NAMES[currentStep]}</span> face</h2>
+              <p className="text-gray-500 text-sm">Align the center piece with the grid</p>
+            </div>
+
+            <Scanner onCapture={handleCapture} />
+
+            <div className="bg-gray-900/50 p-4 rounded-2xl border border-white/5 flex items-center justify-center gap-3">
+              {isSolving ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-sm text-blue-400 font-medium">Crunching algorithms...</span>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">Step {currentStep + 1} of 6</p>
+              )}
+            </div>
+          </>
+        ) : (
+          /* Solution Result View */
+          <div className="space-y-6 animate-in fade-in zoom-in duration-500">
+            <div className="bg-blue-600/20 border border-blue-500/50 p-6 rounded-3xl text-center">
+              <h2 className="text-2xl font-black mb-2">SOLVED!</h2>
+              <p className="text-blue-200">Follow these {solution.length} moves:</p>
+            </div>
+
+            <div className="grid grid-cols-4 gap-3">
+              {solution.map((move, i) => (
+                <div key={i} className="bg-gray-900 border border-white/10 p-4 rounded-xl text-center font-mono text-lg font-bold">
+                  {move}
+                </div>
+              ))}
+            </div>
+
+            <button 
+              onClick={() => { setCurrentStep(0); setSolution([]); setCubeData({}); }}
+              className="w-full py-4 bg-white text-black font-black rounded-2xl hover:bg-gray-200 transition"
+            >
+              SCAN NEW CUBE
+            </button>
+          </div>
+        )}
+      </div>
+    </main>
   );
 }
