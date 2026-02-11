@@ -9,20 +9,20 @@ This is a **Next.js** project bootstrapped with [`create-next-app`](https://next
 First, run the development server:
 
 ```bash
-`npm run dev
+npm run dev
 # or
 yarn dev
 # or
 pnpm dev
 # or
 bun dev
-`Then open your browser and visit:
-
+Then open your browser and visit:
+```
 👉 http://localhost:3000
 
 You can start editing the page by modifying:
-`app/page.tsx
-`
+```app/page.tsx
+```
 The page automatically updates as you edit the file.
 
 This project uses next/font
@@ -44,15 +44,13 @@ Next.js GitHub Repository
 🌐 Deploy on Vercel
 
 The easiest way to deploy your Next.js app is using the Vercel Platform:
-
+```
 👉 https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme
-
+```
 For more deployment details, see:
-
+```
 👉 https://nextjs.org/docs/app/building-your-application/deploying
-
-📄 License
-
-This project is open-source and available under the MIT License.
+```
+📄
 
 Happy coding with Next.js! 🚀
